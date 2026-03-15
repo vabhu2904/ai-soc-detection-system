@@ -63,25 +63,27 @@ AI-based Behavioral Analysis
 ---
 
 ## Project Structure
-'''
+
+```
 ai-soc-detection-system
 │
 ├── backend
-│ ├── app.py
-│ ├── log_parser.py
-│ └── templates/dashboard.html
+│   ├── app.py
+│   ├── log_parser.py
+│   └── templates
+│       └── dashboard.html
 │
 ├── modules
-│ ├── detection_engine
-│ ├── threat_intelligence
-│ ├── file_monitor
-│ └── reporting
+│   ├── detection_engine
+│   ├── threat_intelligence
+│   ├── file_monitor
+│   └── reporting
 │
 ├── models
-│ └── anomaly_model.py
+│   └── anomaly_model.py
 │
 ├── utils
-│ └── hash_utils.py
+│   └── hash_utils.py
 │
 ├── logs
 ├── reports
@@ -91,9 +93,7 @@ ai-soc-detection-system
 ├── lab_simulator.py
 ├── main.py
 └── requirements.txt
-'''
-
----
+```
 
 ## Dashboard Capabilities
 
