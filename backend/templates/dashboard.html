@@ -1,0 +1,1171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI SOC Detection Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      :root {
+        --bg: #0b1220;
+        --panel: #121a2b;
+        --panel-2: #172033;
+        --text: #e8eefc;
+        --muted: #9fb0d3;
+        --border: #25314d;
+        --blue: #4f8cff;
+        --green: #22c55e;
+        --yellow: #f59e0b;
+        --orange: #fb923c;
+        --red: #ef4444;
+        --purple: #8b5cf6;
+        --cyan: #06b6d4;
+        --shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 24px;
+        font-family: Arial, sans-serif;
+        background: linear-gradient(180deg, #09101d 0%, #0c1322 100%);
+        color: var(--text);
+      }
+
+      h1,
+      h2,
+      h3,
+      h4,
+      p {
+        margin: 0;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+
+      .header-left h1 {
+        font-size: 40px;
+        color: #dbe7ff;
+        margin-bottom: 8px;
+      }
+
+      .header-left p {
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      .badge {
+        padding: 10px 14px;
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: bold;
+        border: 1px solid var(--border);
+        background: rgba(79, 140, 255, 0.12);
+        color: #cfe0ff;
+      }
+
+      .grid-top {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(180px, 1fr));
+        gap: 18px;
+        margin-bottom: 18px;
+      }
+
+      .grid-severity {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(180px, 1fr));
+        gap: 18px;
+        margin-bottom: 18px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1.3fr 1fr;
+        gap: 18px;
+        margin-bottom: 18px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 18px;
+        margin-bottom: 18px;
+      }
+
+      .panel {
+        background: linear-gradient(
+          180deg,
+          var(--panel) 0%,
+          var(--panel-2) 100%
+        );
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: var(--shadow);
+      }
+
+      .metric-card {
+        min-height: 135px;
+      }
+
+      .metric-label {
+        color: var(--muted);
+        font-size: 14px;
+        margin-bottom: 14px;
+      }
+
+      .metric-value {
+        font-size: 42px;
+        font-weight: 700;
+        color: #ffffff;
+      }
+
+      .metric-sub {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .status-healthy {
+        color: var(--green);
+      }
+
+      .critical-text {
+        color: var(--red);
+      }
+
+      .high-text {
+        color: var(--orange);
+      }
+
+      .medium-text {
+        color: var(--yellow);
+      }
+
+      .low-text {
+        color: var(--green);
+      }
+
+      .panel-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+
+      .panel-title h2 {
+        font-size: 22px;
+        color: #f5f8ff;
+      }
+
+      .panel-title span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .chart-box {
+        height: 320px;
+      }
+
+      .mini-chart-box {
+        height: 280px;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        text-align: left;
+        padding: 12px 10px;
+        border-bottom: 1px solid var(--border);
+        font-size: 14px;
+      }
+
+      th {
+        color: #c9d8f5;
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      td {
+        color: #e9effd;
+      }
+
+      .sev-pill {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: bold;
+      }
+
+      .sev-critical {
+        background: rgba(239, 68, 68, 0.18);
+        color: #ff8d8d;
+      }
+
+      .sev-high {
+        background: rgba(251, 146, 60, 0.18);
+        color: #ffbf8a;
+      }
+
+      .sev-medium {
+        background: rgba(245, 158, 11, 0.18);
+        color: #ffd27d;
+      }
+
+      .sev-low {
+        background: rgba(34, 197, 94, 0.16);
+        color: #7ef0a8;
+      }
+
+      .component-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .component-item {
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .component-item h4 {
+        margin-bottom: 8px;
+        color: #dbe7ff;
+        font-size: 15px;
+      }
+
+      .component-running {
+        color: var(--green);
+        font-weight: bold;
+      }
+
+      .feed-list,
+      .monitor-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .feed-list li,
+      .monitor-list li {
+        padding: 10px 12px;
+        margin-bottom: 10px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.02);
+        color: #ebf1ff;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .small {
+        font-size: 13px;
+      }
+
+      .section-gap {
+        margin-top: 18px;
+      }
+
+      @media (max-width: 1200px) {
+        .grid-top,
+        .grid-severity {
+          grid-template-columns: repeat(2, minmax(180px, 1fr));
+        }
+
+        .grid-2,
+        .grid-3 {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 700px) {
+        .grid-top,
+        .grid-severity {
+          grid-template-columns: 1fr;
+        }
+
+        .header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .header-left h1 {
+          font-size: 30px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="header-left">
+        <h1>AI SOC Detection System Dashboard</h1>
+        <p>
+          Live monitoring, threat intelligence, alert analytics, and incident
+          visibility
+        </p>
+      </div>
+
+      <div style="display: flex; gap: 10px; align-items: center">
+        <button
+          id="generate-report-btn"
+          class="badge"
+          style="cursor: pointer; background: #172033; color: #e8eefc"
+        >
+          Generate Incident Report
+        </button>
+
+        <div class="badge" id="last-updated">Last updated: --</div>
+      </div>
+    </div>
+
+    <!-- Top summary cards -->
+    <div class="grid-top">
+      <div class="panel metric-card">
+        <div class="metric-label">System Status</div>
+        <div id="status" class="metric-value">Loading...</div>
+        <div class="metric-sub">Overall backend health</div>
+      </div>
+
+      <div class="panel metric-card">
+        <div class="metric-label">Total Events</div>
+        <div id="events" class="metric-value">0</div>
+        <div class="metric-sub">All logged security events</div>
+      </div>
+
+      <div class="panel metric-card">
+        <div class="metric-label">Total Alerts</div>
+        <div id="alerts" class="metric-value">0</div>
+        <div class="metric-sub">Structured SOC alerts</div>
+      </div>
+
+      <div class="panel metric-card">
+        <div class="metric-label">Event Rate / Min</div>
+        <div id="event-rate" class="metric-value">0</div>
+        <div class="metric-sub">Recent event activity rate</div>
+      </div>
+    </div>
+
+    <!-- Severity cards -->
+    <div class="grid-severity">
+      <div class="panel metric-card">
+        <div class="metric-label">Critical Alerts</div>
+        <div id="critical-count" class="metric-value critical-text">0</div>
+        <div class="metric-sub">Highest severity incidents</div>
+      </div>
+
+      <div class="panel metric-card">
+        <div class="metric-label">High Alerts</div>
+        <div id="high-count" class="metric-value high-text">0</div>
+        <div class="metric-sub">Immediate investigation priority</div>
+      </div>
+
+      <div class="panel metric-card">
+        <div class="metric-label">Medium Alerts</div>
+        <div id="medium-count" class="metric-value medium-text">0</div>
+        <div class="metric-sub">Requires analyst review</div>
+      </div>
+
+      <div class="panel metric-card">
+        <div class="metric-label">Low Alerts</div>
+        <div id="low-count" class="metric-value low-text">0</div>
+        <div class="metric-sub">Low-risk operational items</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">
+        <h2>AI Threat Detection</h2>
+        <span>AI Behavioral Analysis</span>
+      </div>
+
+      <table>
+        <tbody>
+          <tr>
+            <td>Type</td>
+            <td id="ai-type">Loading...</td>
+          </tr>
+          <tr>
+            <td>Severity</td>
+            <td id="ai-severity">Loading...</td>
+          </tr>
+          <tr>
+            <td>Incident Status</td>
+            <td id="ai-incident-status" class="sev-pill sev-high">
+              Loading...
+            </td>
+          </tr>
+          <tr>
+            <td>Confidence</td>
+            <td id="ai-confidence">Loading...</td>
+          </tr>
+          <tr>
+            <td>Risk Score</td>
+            <td id="ai-risk-score" class="metric-value">Loading...</td>
+          </tr>
+          <tr>
+            <td>Timestamp</td>
+            <td id="ai-timestamp">Loading...</td>
+          </tr>
+          <tr>
+            <td>Details</td>
+            <td id="ai-details">Loading...</td>
+          </tr>
+          <tr>
+            <td>Explanation</td>
+            <td id="ai-explanation">Loading...</td>
+          </tr>
+          <tr>
+            <td>Recommended Action</td>
+            <td id="ai-action">Loading...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Charts row 1 -->
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-title">
+          <h2>Alert Severity Distribution</h2>
+          <span>Idea #1</span>
+        </div>
+        <div class="chart-box">
+          <canvas id="severityChart"></canvas>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <h2>Top Alert Types</h2>
+          <span>Idea #3</span>
+        </div>
+        <div class="chart-box">
+          <canvas id="alertTypeChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts row 2 -->
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-title">
+          <h2>Alerts Timeline</h2>
+          <span>Idea #2</span>
+        </div>
+        <div class="mini-chart-box">
+          <canvas id="alertsTimelineChart"></canvas>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <h2>Event Rate Monitor</h2>
+          <span>Idea #5</span>
+        </div>
+        <div class="mini-chart-box">
+          <canvas id="eventRateChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Threat intelligence + components + monitored files -->
+    <div class="grid-3">
+      <div class="panel">
+        <div class="panel-title">
+          <h2>Threat Intelligence Summary</h2>
+          <span>Idea #4</span>
+        </div>
+        <table>
+          <tbody>
+            <tr>
+              <td>Hashes Checked</td>
+              <td id="ti-hashes-checked">0</td>
+            </tr>
+            <tr>
+              <td>Malicious</td>
+              <td id="ti-malicious">0</td>
+            </tr>
+            <tr>
+              <td>Not Found</td>
+              <td id="ti-not-found">0</td>
+            </tr>
+            <tr>
+              <td>Safe</td>
+              <td id="ti-safe">0</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <h2>System Components Status</h2>
+          <span>Idea #6</span>
+        </div>
+        <div class="component-grid" id="components-status"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <h2>Monitored Files</h2>
+          <span>Idea #9</span>
+        </div>
+        <ul class="monitor-list" id="monitored-files"></ul>
+      </div>
+    </div>
+
+    <!-- tables and feeds -->
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-title">
+          <h2>Latest Threat Intelligence Results</h2>
+          <span>Idea #7</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Indicator</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody id="ti-results-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <h2>Security Incident Feed</h2>
+          <span>Idea #10</span>
+        </div>
+        <ul class="feed-list" id="incident-feed"></ul>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-title">
+          <h2>Recent Alerts</h2>
+          <span>Existing + improved</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Alert Type</th>
+                <th>Severity</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="recent-alerts-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <h2>Recent Security Events</h2>
+          <span>Existing + improved</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Event</th>
+              </tr>
+            </thead>
+            <tbody id="recent-events-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let severityChart;
+      let alertTypeChart;
+      let alertsTimelineChart;
+      let eventRateChart;
+
+      function formatNow() {
+        return new Date().toLocaleTimeString();
+      }
+
+      function extractTimestamp(event) {
+        return event.timestamp || "Unknown";
+      }
+
+      function extractMinute(event) {
+        if (!event.timestamp) return "Unknown";
+        return event.timestamp.slice(0, 16);
+      }
+
+      function escapeHtml(text) {
+        return text
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;");
+      }
+
+      function getSeverityCounts(alerts) {
+        const counts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+
+        alerts.forEach((alert) => {
+          const sev = (alert.severity || "LOW").toUpperCase();
+          if (counts[sev] !== undefined) counts[sev]++;
+        });
+
+        return counts;
+      }
+
+      function getAlertTypeCounts(alerts) {
+        const counts = {};
+        alerts.forEach((alert) => {
+          const type = alert.type || "Unknown";
+          counts[type] = (counts[type] || 0) + 1;
+        });
+        return counts;
+      }
+
+      function getTimelineCountsFromAlerts(events) {
+        const counts = {};
+
+        events.forEach((event) => {
+          if (!event.timestamp) return;
+
+          if (
+            event.message.includes("File integrity changed") ||
+            event.message.includes("File deleted")
+          ) {
+            const minute = event.timestamp.slice(0, 16);
+
+            counts[minute] = (counts[minute] || 0) + 1;
+          }
+        });
+
+        const labels = Object.keys(counts).sort().slice(-10);
+        const values = labels.map((label) => counts[label]);
+
+        return { labels, values };
+      }
+
+      function getEventRateCounts(events) {
+        const counts = {};
+
+        events.forEach((event) => {
+          const minute = extractMinute(event);
+          counts[minute] = (counts[minute] || 0) + 1;
+        });
+
+        const labels = Object.keys(counts).sort().slice(-10);
+        const values = labels.map((label) => counts[label]);
+
+        return { labels, values };
+      }
+
+      function getCurrentEventRate(events) {
+        const { values } = getEventRateCounts(events);
+        return values.length ? values[values.length - 1] : 0;
+      }
+
+      function getThreatIntelSummary(events) {
+        let hashesChecked = 0;
+        let malicious = 0;
+        let notFound = 0;
+        let safe = 0;
+
+        events.forEach((event) => {
+          const msg = event.message || "";
+
+          if (msg.includes("SHA256 generated") || msg.includes("New Hash")) {
+            hashesChecked++;
+          }
+
+          if (msg.includes("Malicious file reputation detected")) {
+            malicious++;
+          }
+
+          if (msg.includes("not found in VirusTotal")) {
+            notFound++;
+          }
+
+          if (msg.includes("File hash appears safe")) {
+            safe++;
+          }
+        });
+
+        return { hashesChecked, malicious, notFound, safe };
+      }
+
+      function getThreatIntelResults(events) {
+        const results = [];
+
+        events.forEach((event) => {
+          const msg = event.message || "";
+
+          if (msg.includes("Malicious file reputation detected")) {
+            results.push({
+              time: event.timestamp,
+              indicator: "VirusTotal Hash Lookup",
+              result: "MALICIOUS",
+            });
+          } else if (msg.includes("not found in VirusTotal")) {
+            results.push({
+              time: event.timestamp,
+              indicator: "VirusTotal Hash Lookup",
+              result: "NOT FOUND",
+            });
+          } else if (msg.includes("File hash appears safe")) {
+            results.push({
+              time: event.timestamp,
+              indicator: "VirusTotal Hash Lookup",
+              result: "SAFE",
+            });
+          }
+        });
+
+        return results.slice(-8).reverse();
+      }
+
+      function getMonitoredFiles(events) {
+        const files = new Set();
+
+        events.forEach((event) => {
+          if (event.file_path) {
+            files.add(event.file_path);
+          }
+        });
+
+        return Array.from(files).slice(-10).reverse();
+      }
+
+      function getIncidentFeed(events) {
+        const incidents = events.filter(
+          (event) => event.level === "WARNING" || event.level === "CRITICAL",
+        );
+
+        return incidents.slice(-10).reverse();
+      }
+
+      function getComponentStatus(healthData, events, alerts) {
+        const hasEvents = events.length > 0;
+        const hasAlerts = alerts.length > 0;
+
+        return [
+          { name: "File Monitor", status: hasEvents ? "Running" : "Idle" },
+          { name: "Detection Engine", status: hasAlerts ? "Running" : "Idle" },
+          {
+            name: "Threat Intelligence",
+            status: hasEvents ? "Running" : "Idle",
+          },
+          {
+            name: "Backend API",
+            status: healthData.status === "healthy" ? "Running" : "Unavailable",
+          },
+        ];
+      }
+
+      function createOrUpdateChart(chartRef, ctx, config) {
+        if (chartRef) chartRef.destroy();
+        return new Chart(ctx, config);
+      }
+
+      function severityClass(sev) {
+        const s = (sev || "").toUpperCase();
+        if (s === "CRITICAL") return "sev-pill sev-critical";
+        if (s === "HIGH") return "sev-pill sev-high";
+        if (s === "MEDIUM") return "sev-pill sev-medium";
+        return "sev-pill sev-low";
+      }
+
+      async function loadDashboard() {
+        const [healthResponse, alertsResponse, eventsResponse, aiResponse] =
+          await Promise.all([
+            fetch("/system_health"),
+            fetch("/alerts"),
+            fetch("/events"),
+            fetch("/ai_alert"),
+          ]);
+
+        const healthData = await healthResponse.json();
+        const alertsData = await alertsResponse.json();
+        const eventsData = await eventsResponse.json();
+        const aiData = await aiResponse.json();
+
+        const alerts = alertsData.alerts || [];
+        const events = eventsData.events || [];
+
+        document.getElementById("last-updated").innerText =
+          `Last updated: ${formatNow()}`;
+
+        // Top cards
+        const statusElement = document.getElementById("status");
+        statusElement.innerText = healthData.status || "unknown";
+        statusElement.className =
+          (healthData.status || "").toLowerCase() === "healthy"
+            ? "metric-value status-healthy"
+            : "metric-value";
+
+        document.getElementById("events").innerText =
+          healthData.total_events ?? 0;
+        document.getElementById("alerts").innerText =
+          healthData.total_alerts ?? 0;
+        document.getElementById("event-rate").innerText =
+          getCurrentEventRate(events);
+
+        // Severity cards
+        const severityCounts = getSeverityCounts(alerts);
+        document.getElementById("critical-count").innerText =
+          severityCounts.CRITICAL;
+        document.getElementById("high-count").innerText = severityCounts.HIGH;
+        document.getElementById("medium-count").innerText =
+          severityCounts.MEDIUM;
+        document.getElementById("low-count").innerText = severityCounts.LOW;
+
+        document.getElementById("ai-type").innerText = aiData.type || "N/A";
+        document.getElementById("ai-severity").innerText =
+          aiData.severity || "N/A";
+        const incidentElement = document.getElementById("ai-incident-status");
+        incidentElement.innerText = aiData.incident_status || "N/A";
+
+        if (aiData.incident_status === "OPEN") {
+          incidentElement.style.color = "#ef4444";
+        } else if (aiData.incident_status === "INVESTIGATING") {
+          incidentElement.style.color = "#fb923c";
+        } else {
+          incidentElement.style.color = "#22c55e";
+        }
+        document.getElementById("ai-confidence").innerText =
+          aiData.confidence || "N/A";
+        const riskScoreElement = document.getElementById("ai-risk-score");
+        const riskScore = aiData.risk_score ?? 0;
+
+        riskScoreElement.innerText = riskScore;
+
+        if (riskScore >= 70) {
+          riskScoreElement.style.color = "#ef4444";
+        } else if (riskScore >= 40) {
+          riskScoreElement.style.color = "#fb923c";
+        } else if (riskScore >= 20) {
+          riskScoreElement.style.color = "#f59e0b";
+        } else {
+          riskScoreElement.style.color = "#22c55e";
+        }
+        document.getElementById("ai-timestamp").innerText =
+          aiData.timestamp || "N/A";
+        document.getElementById("ai-details").innerText =
+          aiData.details || "N/A";
+        document.getElementById("ai-explanation").innerText = aiData.explanation
+          ? aiData.explanation.join(", ")
+          : "N/A";
+        document.getElementById("ai-action").innerText =
+          aiData.recommended_action || "N/A";
+
+        // Charts
+        severityChart = createOrUpdateChart(
+          severityChart,
+          document.getElementById("severityChart"),
+          {
+            type: "doughnut",
+            data: {
+              labels: ["Critical", "High", "Medium", "Low"],
+              datasets: [
+                {
+                  data: [
+                    severityCounts.CRITICAL,
+                    severityCounts.HIGH,
+                    severityCounts.MEDIUM,
+                    severityCounts.LOW,
+                  ],
+                  backgroundColor: ["#ef4444", "#fb923c", "#f59e0b", "#22c55e"],
+                  borderWidth: 0,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  labels: { color: "#e8eefc" },
+                },
+              },
+            },
+          },
+        );
+
+        const alertTypeCounts = getAlertTypeCounts(alerts);
+        alertTypeChart = createOrUpdateChart(
+          alertTypeChart,
+          document.getElementById("alertTypeChart"),
+          {
+            type: "bar",
+            data: {
+              labels: Object.keys(alertTypeCounts),
+              datasets: [
+                {
+                  label: "Count",
+                  data: Object.values(alertTypeCounts),
+                  backgroundColor: "#4f8cff",
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { labels: { color: "#e8eefc" } },
+              },
+              scales: {
+                x: {
+                  ticks: { color: "#cfe0ff" },
+                  grid: { color: "#25314d" },
+                },
+                y: {
+                  ticks: { color: "#cfe0ff", precision: 0 },
+                  grid: { color: "#25314d" },
+                },
+              },
+            },
+          },
+        );
+
+        const timeline = getTimelineCountsFromAlerts(events);
+        alertsTimelineChart = createOrUpdateChart(
+          alertsTimelineChart,
+          document.getElementById("alertsTimelineChart"),
+          {
+            type: "line",
+            data: {
+              labels: timeline.labels,
+              datasets: [
+                {
+                  label: "Alerts",
+                  data: timeline.values,
+                  borderColor: "#ef4444",
+                  backgroundColor: "rgba(239,68,68,0.15)",
+                  tension: 0.3,
+                  fill: true,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { labels: { color: "#e8eefc" } },
+              },
+              scales: {
+                x: {
+                  ticks: { color: "#cfe0ff" },
+                  grid: { color: "#25314d" },
+                },
+                y: {
+                  ticks: { color: "#cfe0ff", precision: 0 },
+                  grid: { color: "#25314d" },
+                },
+              },
+            },
+          },
+        );
+
+        const eventRate = getEventRateCounts(events);
+        eventRateChart = createOrUpdateChart(
+          eventRateChart,
+          document.getElementById("eventRateChart"),
+          {
+            type: "bar",
+            data: {
+              labels: eventRate.labels,
+              datasets: [
+                {
+                  label: "Events / minute",
+                  data: eventRate.values,
+                  backgroundColor: "#06b6d4",
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { labels: { color: "#e8eefc" } },
+              },
+              scales: {
+                x: {
+                  ticks: { color: "#cfe0ff" },
+                  grid: { color: "#25314d" },
+                },
+                y: {
+                  ticks: { color: "#cfe0ff", precision: 0 },
+                  grid: { color: "#25314d" },
+                },
+              },
+            },
+          },
+        );
+
+        // Threat intelligence summary
+        const tiSummary = getThreatIntelSummary(events);
+        document.getElementById("ti-hashes-checked").innerText =
+          tiSummary.hashesChecked;
+        document.getElementById("ti-malicious").innerText = tiSummary.malicious;
+        document.getElementById("ti-not-found").innerText = tiSummary.notFound;
+        document.getElementById("ti-safe").innerText = tiSummary.safe;
+
+        // Components
+        const componentWrap = document.getElementById("components-status");
+        componentWrap.innerHTML = "";
+        getComponentStatus(healthData, events, alerts).forEach((component) => {
+          const div = document.createElement("div");
+          div.className = "component-item";
+          div.innerHTML = `
+            <h4>${escapeHtml(component.name)}</h4>
+            <div class="component-running">${escapeHtml(component.status)}</div>
+          `;
+          componentWrap.appendChild(div);
+        });
+
+        // Monitored files
+        const monitoredFiles = getMonitoredFiles(events);
+        const monitoredList = document.getElementById("monitored-files");
+        monitoredList.innerHTML = "";
+        if (!monitoredFiles.length) {
+          monitoredList.innerHTML = `<li class="muted">No monitored file activity yet</li>`;
+        } else {
+          monitoredFiles.forEach((file) => {
+            const li = document.createElement("li");
+            li.innerText = file;
+            monitoredList.appendChild(li);
+          });
+        }
+
+        // Threat intel results table
+        const tiTable = document.getElementById("ti-results-table");
+        tiTable.innerHTML = "";
+        const tiResults = getThreatIntelResults(events);
+        if (!tiResults.length) {
+          tiTable.innerHTML = `<tr><td colspan="3" class="muted">No threat intelligence results yet</td></tr>`;
+        } else {
+          tiResults.forEach((item) => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+              <td>${escapeHtml(item.time)}</td>
+              <td>${escapeHtml(item.indicator)}</td>
+              <td>${escapeHtml(item.result)}</td>
+            `;
+            tiTable.appendChild(row);
+          });
+        }
+
+        // Live incident feed
+        const feed = document.getElementById("incident-feed");
+        feed.innerHTML = "";
+        const incidents = getIncidentFeed(events);
+        if (!incidents.length) {
+          feed.innerHTML = `<li class="muted">No live incidents yet</li>`;
+        } else {
+          incidents.forEach((incident) => {
+            const li = document.createElement("li");
+            li.innerText = `${incident.timestamp} - ${incident.message}`;
+            feed.appendChild(li);
+          });
+        }
+
+        // Recent alerts table
+        const recentAlertsTable = document.getElementById(
+          "recent-alerts-table",
+        );
+        recentAlertsTable.innerHTML = "";
+        if (!alerts.length) {
+          recentAlertsTable.innerHTML = `<tr><td colspan="3" class="muted">No alerts yet</td></tr>`;
+        } else {
+          alerts
+            .slice(-8)
+            .reverse()
+            .forEach((alert) => {
+              const row = document.createElement("tr");
+              row.innerHTML = `
+              <td>${escapeHtml(alert.type || "Unknown")}</td>
+              <td><span class="${severityClass(alert.severity)}">${escapeHtml(alert.severity || "LOW")}</span></td>
+              <td>${escapeHtml(alert.details || "")}</td>
+            `;
+              recentAlertsTable.appendChild(row);
+            });
+        }
+
+        // Recent events table
+        const recentEventsTable = document.getElementById(
+          "recent-events-table",
+        );
+        recentEventsTable.innerHTML = "";
+        if (!events.length) {
+          recentEventsTable.innerHTML = `<tr><td colspan="2" class="muted">No events yet</td></tr>`;
+        } else {
+          events
+            .slice(-8)
+            .reverse()
+            .forEach((event) => {
+              const row = document.createElement("tr");
+              row.innerHTML = `
+              <td>${escapeHtml(event.timestamp || "Unknown")}</td>
+              <td>${escapeHtml(event.message || "")}</td>
+            `;
+              recentEventsTable.appendChild(row);
+            });
+        }
+      }
+
+      document
+        .getElementById("generate-report-btn")
+        .addEventListener("click", async function () {
+          try {
+            const response = await fetch("/incident_report");
+            const data = await response.json();
+
+            alert(
+              `Incident Report Generated\n\nIncident ID: ${data.incident_id}\nFile: ${data.filename}`,
+            );
+          } catch (error) {
+            alert("Failed to generate incident report.");
+            console.error(error);
+          }
+        });
+
+      loadDashboard();
+      setInterval(loadDashboard, 5000);
+    </script>
+    <div
+      style="
+        margin-top: 30px;
+        text-align: center;
+        color: #9fb0d3;
+        font-size: 13px;
+      "
+    >
+      AI SOC Detection System • Security Monitoring Dashboard • Auto Refresh: 5s
+    </div>
+  </body>
+</html>

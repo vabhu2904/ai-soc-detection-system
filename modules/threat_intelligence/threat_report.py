@@ -1,0 +1,118 @@
+import requests
+
+VT_API_KEY = "5e5d1db77ccc4010ace78f0a3b9357be9d85e707bec3f37b18aad0fd0dea89b4"
+ABUSEIPDB_API_KEY = "fdc6a88058e98d4fb974ad938d3ce13855d87d9c0fd6a5538b12f424b50c29457af1d6a23abb3b45"
+
+
+def check_file_hash_virustotal(file_hash):
+    url = f"https://www.virustotal.com/api/v3/files/{file_hash}"
+    headers = {
+        "x-apikey": VT_API_KEY
+    }
+
+    try:
+        response = requests.get(url, headers=headers)
+
+        if response.status_code == 200:
+            data = response.json()
+            stats = data["data"]["attributes"]["last_analysis_stats"]
+
+            return {
+                "malicious": stats.get("malicious", 0),
+                "suspicious": stats.get("suspicious", 0),
+                "harmless": stats.get("harmless", 0)
+            }
+
+        elif response.status_code == 404:
+            return {
+                "malicious": 0,
+                "suspicious": 0,
+                "harmless": 0
+            }
+
+        else:
+            print(f"[ERROR] VirusTotal API error: {response.status_code}")
+            return None
+
+    except Exception as e:
+        print(f"[ERROR] VirusTotal check failed: {e}")
+        return None
+
+
+def check_ip_abuse(ip_address):
+    url = "https://api.abuseipdb.com/api/v2/check"
+
+    headers = {
+        "Key": ABUSEIPDB_API_KEY,
+        "Accept": "application/json"
+    }
+
+    params = {
+        "ipAddress": ip_address,
+        "maxAgeInDays": 90
+    }
+
+    try:
+        response = requests.get(url, headers=headers, params=params)
+
+        if response.status_code == 200:
+            data = response.json()["data"]
+
+            return {
+                "abuse_score": data.get("abuseConfidenceScore", 0),
+                "country": data.get("countryCode", "Unknown"),
+                "isp": data.get("isp", "Unknown"),
+                "total_reports": data.get("totalReports", 0)
+            }
+
+        else:
+            print(f"[ERROR] AbuseIPDB API error: {response.status_code}")
+            return None
+
+    except Exception as e:
+        print(f"[ERROR] AbuseIPDB check failed: {e}")
+        return None
+
+
+def generate_final_threat_level(vt_result, ip_result):
+    if vt_result["malicious"] > 0 and ip_result["abuse_score"] >= 75:
+        return "CRITICAL"
+    elif vt_result["malicious"] > 0 or ip_result["abuse_score"] >= 75:
+        return "HIGH"
+    elif vt_result["suspicious"] > 0 or ip_result["abuse_score"] >= 25:
+        return "MEDIUM"
+    else:
+        return "LOW"
+
+
+def generate_report(file_hash, ip_address):
+    vt_result = check_file_hash_virustotal(file_hash)
+    ip_result = check_ip_abuse(ip_address)
+
+    if vt_result is None or ip_result is None:
+        print("[ERROR] Could not generate threat intelligence report.")
+        return
+
+    final_level = generate_final_threat_level(vt_result, ip_result)
+
+    print("\n========== SOC THREAT INTELLIGENCE REPORT ==========")
+    print(f"File Hash                 : {file_hash}")
+    print(f"VT Malicious Detections   : {vt_result['malicious']}")
+    print(f"VT Suspicious Detections  : {vt_result['suspicious']}")
+    print(f"VT Harmless Detections    : {vt_result['harmless']}")
+    print("----------------------------------------------------")
+    print(f"IP Address                : {ip_address}")
+    print(f"IP Abuse Score            : {ip_result['abuse_score']}")
+    print(f"IP Country                : {ip_result['country']}")
+    print(f"IP ISP                    : {ip_result['isp']}")
+    print(f"IP Total Reports          : {ip_result['total_reports']}")
+    print("----------------------------------------------------")
+    print(f"FINAL THREAT LEVEL        : {final_level}")
+    print("====================================================")
+
+
+if __name__ == "__main__":
+    file_hash = input("Enter file hash to analyze: ").strip()
+    ip_address = input("Enter IP address to analyze: ").strip()
+
+    generate_report(file_hash, ip_address)
