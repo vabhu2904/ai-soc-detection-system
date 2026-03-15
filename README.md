@@ -1,4 +1,8 @@
+![Python](https://img.shields.io/badge/Python-3.12-blue)
+![Security](https://img.shields.io/badge/Cybersecurity-SOC-red)
+![AI](https://img.shields.io/badge/AI-Anomaly%20Detection-green)
 # AI SOC Detection System
+
 
 An AI-powered Security Operations Center (SOC) simulation platform that detects suspicious behavior, analyzes security events, and generates professional incident reports.
 
@@ -59,7 +63,7 @@ AI-based Behavioral Analysis
 ---
 
 ## Project Structure
-
+'''
 ai-soc-detection-system
 │
 ├── backend
@@ -87,7 +91,7 @@ ai-soc-detection-system
 ├── lab_simulator.py
 ├── main.py
 └── requirements.txt
-
+'''
 
 ---
 
